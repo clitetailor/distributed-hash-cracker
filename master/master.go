@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"bufio"
-	"os"
 )
 
 func main() {
@@ -13,45 +12,85 @@ func main() {
 
 func createServer() {
 	ln, err := net.Listen("tcp", ":25000")
-
-	in := make(chan string)
+	ln2, err2 := net.Listen("tcp", ":8080")
 
 	if err != nil {
-		handleError(err)
+		fmt.Println(err.Error())
+		return
 	}
+	fmt.Println("Listening on ports 25000")
+
+	if err2 != nil {
+		fmt.Println(err2.Error())
+		return
+	}
+	fmt.Println("Listening  on port 8080")
+
+	in := make(chan string)
+	out := make(chan string)
 
 	go func() {
 		for {
-			conn, err := ln.Accept()
+			conn, err := ln2.Accept()
+
+			fmt.Println("Connected to client")
+			
 			if err != nil {
-				handleError(err)
+				fmt.Println(err.Error())
+				conn.Close()
+				continue
 			}
-			for {
-				handleConnection(conn, in)
-			}
+
+			go handleClientConnection(conn, in, out)
 		}
 	}()
 
-	reader := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Print("> ")
-		
-		text, err := reader.ReadString('\n')
+		conn, err := ln.Accept()
+	
 		if err != nil {
-			handleError(err)
-		} else {
-			text = text + "\n"
-			fmt.Print(text)
-			in <- text
+			fmt.Println(err)
+			conn.Close()
+			return
+		}
+
+		go handleWorkerConnection(conn, in, out)
+	}
+}
+
+func handleClientConnection(conn net.Conn, in chan string, out chan string) {
+	for {
+		reader := bufio.NewReader(conn)
+
+		for {
+			request, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Println(err)
+				conn.Close()
+				return
+			}
+
+			fmt.Print(request)
+			fmt.Fprintf(conn, request)
 		}
 	}
 }
 
-func handleError(err error) {
-	fmt.Print(err.Error())
-}
+func handleWorkerConnection(conn net.Conn, in chan string, out chan string) {
+	reader := bufio.NewReader(conn)
 
-func handleConnection(conn net.Conn, in chan string) {
-	text := <- in
-	conn.Write([]byte(text))
+	for {
+		hash, err := reader.ReadString('\n')
+
+		if err != nil {
+			fmt.Println(err.Error())
+			conn.Close()
+			return
+		}
+
+		in <- hash
+		response := <- out
+
+		fmt.Printf(response, conn)
+	}
 }
