@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net"
 	"bufio"
+	"../lib"
+	"./manager"
+	"./worker"
 )
 
 func main() {
@@ -11,27 +14,28 @@ func main() {
 }
 
 func createServer() {
-	ln, err := net.Listen("tcp", ":25000")
-	ln2, err2 := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", ":8080")
+	ln2, err2 := net.Listen("tcp", ":25000")
 
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("Listening on ports 25000")
-
+	fmt.Println("Listening  on port 8080")
+	
 	if err2 != nil {
 		fmt.Println(err2.Error())
 		return
 	}
-	fmt.Println("Listening  on port 8080")
+	fmt.Println("Listening on ports 25000")
 
 	in := make(chan string)
 	out := make(chan string)
+	exit := make(chan bool)
 
 	go func() {
 		for {
-			conn, err := ln2.Accept()
+			conn, err := ln.Accept()
 
 			fmt.Println("Connected to client")
 			
@@ -45,8 +49,14 @@ func createServer() {
 		}
 	}()
 
+	listenWorkers(ln2, in, out)
+}
+
+func listenWorkers(in chan string, out chan string) {
+	workerConns := []net.Conn{}
+
 	for {
-		conn, err := ln.Accept()
+		conn, err := ln2.Accept()
 	
 		if err != nil {
 			fmt.Println(err)
@@ -54,7 +64,7 @@ func createServer() {
 			return
 		}
 
-		go handleWorkerConnection(conn, in, out)
+		go handleWorkerConnection(conn, in, out, exit)
 	}
 }
 
@@ -70,27 +80,35 @@ func handleClientConnection(conn net.Conn, in chan string, out chan string) {
 				return
 			}
 
-			fmt.Print(request)
+			in <- request
+			response := <- out
+
+			fmt.Print(response)
 			fmt.Fprintf(conn, request)
 		}
 	}
 }
 
-func handleWorkerConnection(conn net.Conn, in chan string, out chan string) {
+func handleWorkerConnection(conn net.Conn, in chan string, out chan string, exit chan bool) {
 	reader := bufio.NewReader(conn)
 
 	for {
-		hash, err := reader.ReadString('\n')
+		_, err := fmt.Fprintf(conn, <- in)
 
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			conn.Close()
+
 			return
 		}
 
-		in <- hash
-		response := <- out
-
-		fmt.Fprintf(conn, response)
+		response, err2 := reader.ReadString('\n')
+		out <- response
+		
+		if err2 != nil {
+			fmt.Println(err2.Error())
+			conn.Close()
+			return
+		}
 	}
 }

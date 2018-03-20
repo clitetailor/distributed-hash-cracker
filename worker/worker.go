@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"bufio"
+	"../lib"
 )
 
 func main() {
@@ -12,22 +13,27 @@ func main() {
 
 func connectToMaster() {
 	conn, err := net.Dial("tcp", ":25000")
+
 	if err != nil {
-		handleError(err)
+		fmt.Println(err.Error())
+		conn.Close()
+		return
 	}
 	for {
 		handleConnection(conn)
 	}
 }
 
-func handleError(err error) {
-	fmt.Print(err.Error())
-}
-
 func handleConnection(conn net.Conn) {
-	text, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		handleError(err)
+	for {
+		text, err := bufio.NewReader(conn).ReadString('\n')
+
+		if err != nil {
+			fmt.Println(err.Error())
+			conn.Close()
+			return
+		}
+
+		fmt.Println(text)
 	}
-	fmt.Print(text)
 }
