@@ -91,6 +91,6 @@ func handleWorkerConnection(conn net.Conn, in chan string, out chan string) {
 		in <- hash
 		response := <- out
 
-		fmt.Printf(response, conn)
+		fmt.Fprintf(conn, response)
 	}
 }
