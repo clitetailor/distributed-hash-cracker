@@ -1,65 +1,73 @@
 package worker
 
 import (
-	"bufio"
 	"net"
-	"fmt"
 	"log"
+	"encoding/json"
+	"github.com/clitetailor/distributed-hash-decrypter/lib"
 )
 
 // Worker stores information about worker cluster.
 type Worker struct {
-	id int
 	conn net.Conn
-	in chan string
-	out chan string
-	exit chan bool
-	dis chan bool
+	In chan lib.DataTransfer
+	Out chan string
+	Done chan bool
+	StopSignal chan bool
 }
 
 // New initializes and returns a new Worker.
-func New(id int, conn net.Conn) Worker {
+func New(conn net.Conn) Worker {
 	return Worker {
-		id: id,
 		conn: conn,
-		in: make(chan string),
-		out: make(chan string),
-		exit: make(chan bool),
-		dis: make(chan bool) }
-}
-
-// GetDis returns chan that signals when worker is disconnected.
-func (worker Worker) GetDis() (chan bool) {
-	return worker.dis
+		In: make(chan lib.DataTransfer),
+		Out: make(chan string),
+		StopSignal: make(chan bool) }
 }
 
 // Run runs and manager the connection to worker.
 func (worker Worker) Run() {
-	reader := bufio.NewReader(worker.conn)
-
 	for {
-		_, err := fmt.Fprintf(worker.conn, <- worker.in)
-
+		writer := json.NewEncoder(worker.conn)
+	
+		err := writer.Encode(<- worker.In)
 		if err != nil {
 			log.Output(1, err.Error())
 			worker.conn.Close()
-			worker.dis <- true
+			return
+		}
+		
+		reader := json.NewDecoder(worker.conn)
+		
+		var response lib.DataTransfer
+
+		err2 := reader.Decode(&response)
+		if err2 != nil {
+			log.Output(1, err2.Error())
+			worker.conn.Close()
 			return
 		}
 
-		response, err2 := reader.ReadString('\n')
-		worker.out <- response
-		
-		if err2 != nil {
-			log.Output(1, err2.Error())
-			worker.CloseConn()
-			return
+		switch response.Type {
+		case "found":
+			worker.Out <- response.Result
+			
+		case "notfound":
+			worker.Done <- true
 		}
 	}
 }
 
-// CloseConn closes the connection to worker.
-func (worker Worker) CloseConn() {
-	worker.conn.Close()
-	worker.dis <- true
+// Stop stops worker running tasks.
+func (worker Worker) Stop() {
+	data := lib.DataTransfer {
+		Type: "stop" }
+
+	worker.StopSignal <- true
+
+	err := json.NewEncoder(worker.conn).Encode(data)
+	if err != nil {
+		log.Output(1, err.Error())
+		worker.conn.Close()
+	}
 }

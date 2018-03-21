@@ -1,12 +1,13 @@
 package main
 
 import (
+	"github.com/clitetailor/distributed-hash-decrypter/lib"
+	"github.com/clitetailor/distributed-hash-decrypter/master/manager"
+	"github.com/clitetailor/distributed-hash-decrypter/master/worker"
 	"fmt"
 	"net"
 	"bufio"
-	"../lib"
-	"./manager"
-	"./worker"
+	"log"
 )
 
 func main() {
@@ -25,46 +26,26 @@ func main() {
 	}
 	fmt.Println("Listening on ports 25000")
 
-	in := make(chan string)
-	out := make(chan string)
-	exit := make(chan bool)
+	m := manager.New(ln2)
 
 	go func() {
-		for {
-			conn, err := ln.Accept()
-
-			fmt.Println("Connected to client")
-			
-			if err != nil {
-				log.Output(1, err.Error())
-				conn.Close()
-				continue
-			}
-
-			go handleClientConnection(conn, in, out)
-		}
+		m.Run()
 	}()
-
-	listenWorkers(ln2, in, out)
-}
-
-func listenWorkers(in chan string, out chan string) {
-	workerConns := []net.Conn{}
-
-	for {
-		conn, err := ln2.Accept()
 	
+	for {
+		conn, err := ln.Accept()
+		
 		if err != nil {
-			log.Output(1, err)
+			log.Output(1, err.Error())
 			conn.Close()
-			return
+			continue
 		}
-
-		go handleWorkerConnection(conn, in, out, exit)
+		
+		go handleConnection(conn, m.In, m.Out)
 	}
 }
 
-func handleClientConnection(conn net.Conn, in chan string, out chan string) {
+func handleConnection(conn net.Conn, in chan string, out chan string) {
 	for {
 		reader := bufio.NewReader(conn)
 
@@ -81,30 +62,6 @@ func handleClientConnection(conn net.Conn, in chan string, out chan string) {
 
 			fmt.Print(response)
 			fmt.Fprintf(conn, request)
-		}
-	}
-}
-
-func handleWorkerConnection(conn net.Conn, in chan string, out chan string, exit chan bool) {
-	reader := bufio.NewReader(conn)
-
-	for {
-		_, err := fmt.Fprintf(conn, <- in)
-
-		if err != nil {
-			log.Output(1, err)
-			conn.Close()
-
-			return
-		}
-
-		response, err2 := reader.ReadString('\n')
-		out <- response
-		
-		if err2 != nil {
-			log.Output(1, err2.Error())
-			conn.Close()
-			return
 		}
 	}
 }

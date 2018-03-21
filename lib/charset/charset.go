@@ -152,3 +152,30 @@ func Reverse(runeArr []rune) []rune {
 
 	return newRuneArr
 }
+
+// Range splits range into a number of ranges.
+func Range(start []rune, end []rune, count int) [][2][]rune {
+	ranges := [][2][]rune{}
+
+	startInt := RuneArrToBigInt(start)
+	endInt := RuneArrToBigInt(end)
+
+	diff := new(big.Int).Sub(endInt, startInt)
+	chunkSize := new(big.Int).Div(diff, big.NewInt(int64(count)))
+
+	nLoop := count - 1
+	for i := 0; i < nLoop; i++ {
+		midInt := new(big.Int).Add(startInt, chunkSize)
+
+		ranges = append(ranges, [2][]rune{
+			BigIntToRuneArr(startInt),
+			BigIntToRuneArr(midInt) })
+
+		startInt = midInt
+	}
+
+	ranges = append(ranges, [2][]rune{
+		BigIntToRuneArr(startInt),
+		BigIntToRuneArr(endInt)	})
+	return ranges
+}

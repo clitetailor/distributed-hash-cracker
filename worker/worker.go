@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"net"
-	"bufio"
 	"encoding/json"
 	"log"
-	"../lib"
-	"../lib/charset"
+	"github.com/clitetailor/distributed-hash-decrypter/lib"
+	"github.com/clitetailor/distributed-hash-decrypter/lib/charset"
 )
 
 func main() {
@@ -19,11 +18,7 @@ func main() {
 		return
 	}
 
-	for {
-		handleConnection(conn)
-	}
-
-	worker := New()
+	worker := New(conn)
 	worker.Init()
 }
 
@@ -38,16 +33,15 @@ type Worker struct {
 func New(conn net.Conn) Worker {
 	return Worker {
 		conn: conn,
-		nRoutines: 3
-	}
+		nRoutines: 3 }
 }
 
 // Init handles connection IO and run tasks.
-func (worker Worker) Init() {
+func (worker *Worker) Init() {
 	reader := json.NewDecoder(worker.conn)
 
 	for {
-		data := new(DataTransfer)
+		data := lib.DataTransfer{}
 		err := reader.Decode(&data)
 
 		if err != nil {
@@ -56,35 +50,33 @@ func (worker Worker) Init() {
 			return
 		}
 
-		worker.Run()
+		worker.Run(data)
 	}
 }
 
 // Run runs worker task.
-func (worker Worker) Run(data DataTransfer) {
-	writer := json.NewEncoder(worker.conn)
-
+func (worker Worker) Run(data lib.DataTransfer) {
 	switch data.Type {
-		case "data": {
-			worker.stop = false		
-			
-			worker.RunHash(data)
-		}
+	case "data":
+		worker.stop = false		
+		worker.StartGoroutines(data)
 
-		case "exit": {
-			worker.Stop()
-		}
+	case "stop":
+		worker.Stop()
 	}
 }
 
-func (worker Worker) StartGoroutines(data DataTransfer) {
+// StartGoroutines starts worker goroutines.
+func (worker Worker) StartGoroutines(data lib.DataTransfer) {
 	for i := 0; i < worker.nRoutines; i++ {
 		go worker.RunHash(data)
 	}
 }
 
 // RunHash runs hash task.
-func (worker Worker) RunHash(data DataTransfer) {
+func (worker Worker) RunHash(data lib.DataTransfer) {
+	writer := json.NewEncoder(worker.conn)
+
 	for i := data.Start; charset.Sign(i, data.End) < 0; charset.IncRuneArr(i) {
 		if worker.stop {
 			return
@@ -92,13 +84,13 @@ func (worker Worker) RunHash(data DataTransfer) {
 
 		if charset.IsValid(i) {
 			str := string(i)
-			code := charset.HashString(i)
+			code := charset.HashString(str)
 
 			if code == data.Code {
-				data := DataTransfer {
-					type: "found",
-					result: str
-				}
+				data := lib.DataTransfer {
+					Type: "found",
+					Result: str }
+
 				writer.Encode(data)
 				worker.stop = true
 				return
@@ -106,14 +98,14 @@ func (worker Worker) RunHash(data DataTransfer) {
 		}
 	}
 
-	data := DataTransfer {
-		type: "notfound"
-	}
-	writer.Encode(data)
-	worker.stop = true
+	response := lib.DataTransfer {
+		Type: "notfound" }
+
+	writer.Encode(response)
+	worker.Stop()
 }
 
-// Stop signal worker to stop other tasks.
-func (worker Worker) Stop(data DataTransfer) {
+// Stop signals workers to stop other tasks.
+func (worker Worker) Stop() {
 	worker.stop = true
 }
