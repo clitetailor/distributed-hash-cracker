@@ -26,7 +26,7 @@ func New(conn net.Conn) Worker {
 }
 
 // Run runs and manager the connection to worker.
-func (worker Worker) Run() {
+func (worker *Worker) Run() {
 	for {
 		writer := json.NewEncoder(worker.conn)
 	
@@ -59,7 +59,7 @@ func (worker Worker) Run() {
 }
 
 // Stop stops worker running tasks.
-func (worker Worker) Stop() {
+func (worker *Worker) Stop() {
 	data := lib.DataTransfer {
 		Type: "stop" }
 

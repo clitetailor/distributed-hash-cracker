@@ -1,9 +1,7 @@
 package main
 
 import (
-	"github.com/clitetailor/distributed-hash-decrypter/lib"
 	"github.com/clitetailor/distributed-hash-decrypter/master/manager"
-	"github.com/clitetailor/distributed-hash-decrypter/master/worker"
 	"fmt"
 	"net"
 	"bufio"
@@ -52,7 +50,7 @@ func handleConnection(conn net.Conn, in chan string, out chan string) {
 		for {
 			request, err := reader.ReadString('\n')
 			if err != nil {
-				log.Output(1, err)
+				log.Output(1, err.Error())
 				conn.Close()
 				return
 			}
@@ -60,8 +58,13 @@ func handleConnection(conn net.Conn, in chan string, out chan string) {
 			in <- request
 			response := <- out
 
-			fmt.Print(response)
-			fmt.Fprintf(conn, request)
+			fmt.Println(response)
+			_, err2 := fmt.Fprintf(conn, response + "\n")
+			if err2 != nil {
+				log.Output(1, err.Error())
+				conn.Close()
+				return
+			}
 		}
 	}
 }

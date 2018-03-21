@@ -55,7 +55,7 @@ func (worker *Worker) Init() {
 }
 
 // Run runs worker task.
-func (worker Worker) Run(data lib.DataTransfer) {
+func (worker *Worker) Run(data lib.DataTransfer) {
 	switch data.Type {
 	case "data":
 		worker.stop = false		
@@ -67,14 +67,14 @@ func (worker Worker) Run(data lib.DataTransfer) {
 }
 
 // StartGoroutines starts worker goroutines.
-func (worker Worker) StartGoroutines(data lib.DataTransfer) {
+func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 	for i := 0; i < worker.nRoutines; i++ {
 		go worker.RunHash(data)
 	}
 }
 
 // RunHash runs hash task.
-func (worker Worker) RunHash(data lib.DataTransfer) {
+func (worker *Worker) RunHash(data lib.DataTransfer) {
 	writer := json.NewEncoder(worker.conn)
 
 	for i := data.Start; charset.Sign(i, data.End) < 0; charset.IncRuneArr(i) {
@@ -106,6 +106,6 @@ func (worker Worker) RunHash(data lib.DataTransfer) {
 }
 
 // Stop signals workers to stop other tasks.
-func (worker Worker) Stop() {
+func (worker *Worker) Stop() {
 	worker.stop = true
 }

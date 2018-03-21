@@ -6,6 +6,7 @@ import (
 	"github.com/clitetailor/distributed-hash-decrypter/lib"
 	"net"
 	"log"
+	"fmt"
 )
 
 // Manager manages worker clusters.
@@ -30,7 +31,7 @@ func New(ln net.Listener) Manager {
 }
 
 // Run runs manager tasks.
-func (manager Manager) Run() {
+func (manager *Manager) Run() {
 	go func() {
 		manager.Deliver()
 	}()
@@ -49,16 +50,16 @@ func (manager Manager) Run() {
 }
 
 // Deliver receives data from client and delivers to workers.
-func (manager Manager) Deliver() {
+func (manager *Manager) Deliver() {
 	for {
 		request := <- manager.In
-		nWorker := len(manager.workers)
+		nWorkers := len(manager.workers)
 
 		start := []rune("a")
 		end := []rune("999")
 		
-		if nWorker == 0 {
-			ranges := charset.Range(start, end, nWorker)
+		if nWorkers != 0 {
+			ranges := charset.Range(start, end, nWorkers)
 
 			i := 0
 			for _, worker := range manager.workers {
@@ -86,11 +87,13 @@ func (manager Manager) Deliver() {
 }
 
 // Add adds new worker connection to manager.
-func (manager Manager) Add(conn net.Conn) {
+func (manager *Manager) Add(conn net.Conn) {
 	id := len(manager.workers)
 
 	worker := worker.New(conn)
 	manager.workers[id] = worker
+
+	fmt.Println("Conns: ", len(manager.workers))
 
 	go func() {
 		worker.Run()
@@ -99,7 +102,7 @@ func (manager Manager) Add(conn net.Conn) {
 }
 
 // Stop sends stop signal to all workers.
-func (manager Manager) Stop() {
+func (manager *Manager) Stop() {
 	for _, worker := range manager.workers {
 		worker.Stop()
 	}
