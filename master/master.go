@@ -10,21 +10,17 @@ import (
 )
 
 func main() {
-	createServer()
-}
-
-func createServer() {
 	ln, err := net.Listen("tcp", ":8080")
 	ln2, err2 := net.Listen("tcp", ":25000")
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Output(1, err.Error())
 		return
 	}
 	fmt.Println("Listening  on port 8080")
 	
 	if err2 != nil {
-		fmt.Println(err2.Error())
+		log.Output(1, err2.Error())
 		return
 	}
 	fmt.Println("Listening on ports 25000")
@@ -40,7 +36,7 @@ func createServer() {
 			fmt.Println("Connected to client")
 			
 			if err != nil {
-				fmt.Println(err.Error())
+				log.Output(1, err.Error())
 				conn.Close()
 				continue
 			}
@@ -59,7 +55,7 @@ func listenWorkers(in chan string, out chan string) {
 		conn, err := ln2.Accept()
 	
 		if err != nil {
-			fmt.Println(err)
+			log.Output(1, err)
 			conn.Close()
 			return
 		}
@@ -75,7 +71,7 @@ func handleClientConnection(conn net.Conn, in chan string, out chan string) {
 		for {
 			request, err := reader.ReadString('\n')
 			if err != nil {
-				fmt.Println(err)
+				log.Output(1, err)
 				conn.Close()
 				return
 			}
@@ -96,7 +92,7 @@ func handleWorkerConnection(conn net.Conn, in chan string, out chan string, exit
 		_, err := fmt.Fprintf(conn, <- in)
 
 		if err != nil {
-			fmt.Println(err)
+			log.Output(1, err)
 			conn.Close()
 
 			return
@@ -106,7 +102,7 @@ func handleWorkerConnection(conn net.Conn, in chan string, out chan string, exit
 		out <- response
 		
 		if err2 != nil {
-			fmt.Println(err2.Error())
+			log.Output(1, err2.Error())
 			conn.Close()
 			return
 		}

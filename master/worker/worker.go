@@ -9,6 +9,7 @@ import (
 
 // Worker stores information about worker cluster.
 type Worker struct {
+	id int
 	conn net.Conn
 	in chan string
 	out chan string
@@ -17,16 +18,14 @@ type Worker struct {
 }
 
 // New initializes and returns a new Worker.
-func New(conn net.Conn) Worker {
-	worker := new(Worker)
-	worker.conn = conn
-
-	worker.in = make(chan string)
-	worker.out = make(chan string)
-	worker.exit = make(chan bool)
-	worker.dis = make(chan bool)
-	
-	return *worker
+func New(id int, conn net.Conn) Worker {
+	return Worker {
+		id: id,
+		conn: conn,
+		in: make(chan string),
+		out: make(chan string),
+		exit: make(chan bool),
+		dis: make(chan bool) }
 }
 
 // GetDis returns chan that signals when worker is disconnected.
@@ -42,7 +41,7 @@ func (worker Worker) Run() {
 		_, err := fmt.Fprintf(worker.conn, <- worker.in)
 
 		if err != nil {
-			log.Println(err)
+			log.Output(1, err.Error())
 			worker.conn.Close()
 			worker.dis <- true
 			return
@@ -52,13 +51,14 @@ func (worker Worker) Run() {
 		worker.out <- response
 		
 		if err2 != nil {
-			fmt.Println(err2.Error())
+			log.Output(1, err2.Error())
 			worker.CloseConn()
 			return
 		}
 	}
 }
 
+// CloseConn closes the connection to worker.
 func (worker Worker) CloseConn() {
 	worker.conn.Close()
 	worker.dis <- true

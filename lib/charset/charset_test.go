@@ -3,10 +3,20 @@ package charset
 import "testing"
 
 func TestInc(t *testing.T) {
-	arr := []rune("gello world!")
-	arr, _ = IncRuneArr(arr)
+	arr := []rune("hello world")
+	IncRuneArr(arr)
 
-	if string(arr) != "hello world!" {
-		t.Error("Expected 'hello world!' got ", string(arr))
+	if string(arr) != "iello world" {
+		t.Error("Expected 'hello world' got", string(arr))
+	}
+}
+
+func TestBigInt(t *testing.T) {
+	arr := []rune("hello world")
+
+	bigInt := RuneArrToBigInt(arr)
+	str := string(BigIntToRuneArr(bigInt))
+	if str != "hello world" {
+		t.Error("Expected 'hello world' got", str)
 	}
 }
