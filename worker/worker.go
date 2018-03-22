@@ -71,6 +71,7 @@ func (worker *Worker) Run(data lib.DataTransfer) {
 // StartGoroutines starts worker goroutines.
 func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 	ranges := charset.Range(data.Start, data.End, worker.nRoutines)
+	notfound := make(chan bool, 3)
 
 	var wg sync.WaitGroup
 
@@ -84,27 +85,30 @@ func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 				Start: ranges[i][0],
 				End: ranges[i][1],
 				
-				Code: data.Code }, i)
+				Code: data.Code }, notfound)
 		}(i)
 	}
 
 	wg.Wait()
-	fmt.Println("Not found!")
 
-	response := lib.DataTransfer {
-		Type: "notfound" }
+	if len(notfound) == worker.nRoutines {
+		fmt.Println("Not found!")
 	
-	writer := json.NewEncoder(worker.conn)
-	err := writer.Encode(&response)
-	if err != nil {
-		log.Output(1, err.Error())
-		worker.conn.Close()
-		return
+		response := lib.DataTransfer {
+			Type: "notfound" }
+		
+		writer := json.NewEncoder(worker.conn)
+		err := writer.Encode(&response)
+		if err != nil {
+			log.Output(1, err.Error())
+			worker.conn.Close()
+			return
+		}
 	}
 }
 
 // RunHash runs hash task.
-func (worker *Worker) RunHash(data lib.DataTransfer, routineI int) {
+func (worker *Worker) RunHash(data lib.DataTransfer, notfound chan bool) {
 	writer := json.NewEncoder(worker.conn)
 
 	for i := data.Start; charset.Sign(i, data.End) < 0; i = charset.IncRuneArr(i) {
@@ -117,6 +121,8 @@ func (worker *Worker) RunHash(data lib.DataTransfer, routineI int) {
 			code := charset.HashString(str)
 
 			if strings.HasPrefix(data.Code, code) {
+				fmt.Println("Found: ", str)
+
 				data := lib.DataTransfer {
 					Type: "found",
 					Result: str }
@@ -127,6 +133,8 @@ func (worker *Worker) RunHash(data lib.DataTransfer, routineI int) {
 			}
 		}
 	}
+
+	notfound <- true
 }
 
 // Stop signals workers to stop other tasks.

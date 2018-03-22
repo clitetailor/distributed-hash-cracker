@@ -53,7 +53,7 @@ func (manager *Manager) Deliver() {
 		request := <- manager.In
 
 		start := []rune("a")
-		end := []rune("999")
+		end := []rune("999999")
 		
 		if len(manager.workers) == 0 {
 			manager.Out <- "No workers found!"
