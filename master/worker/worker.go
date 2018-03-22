@@ -2,7 +2,6 @@ package worker
 
 import (
 	"net"
-	"log"
 	"encoding/json"
 	"github.com/clitetailor/distributed-hash-decrypter/lib"
 )
@@ -10,65 +9,62 @@ import (
 // Worker stores information about worker cluster.
 type Worker struct {
 	conn net.Conn
+	Done bool
 	In chan lib.DataTransfer
-	Out chan string
-	Done chan bool
-	StopSignal chan bool
+	Out chan lib.DataTransfer
+	IsStopped chan bool
 }
 
 // New initializes and returns a new Worker.
 func New(conn net.Conn) Worker {
 	return Worker {
 		conn: conn,
+		Done: false,
 		In: make(chan lib.DataTransfer),
-		Out: make(chan string),
-		Done: make(chan bool),
-		StopSignal: make(chan bool) }
+		Out: make(chan lib.DataTransfer),
+		IsStopped: make(chan bool) }
 }
 
 // Run runs and manager the connection to worker.
-func (worker *Worker) Run() {
+func (worker *Worker) Run() error {
 	for {
 		writer := json.NewEncoder(worker.conn)
 	
 		err := writer.Encode(<- worker.In)
 		if err != nil {
-			log.Output(1, err.Error())
-			worker.conn.Close()
-			return
+			return err
 		}
 		
 		reader := json.NewDecoder(worker.conn)
 		
 		var response lib.DataTransfer
 
-		err2 := reader.Decode(&response)
-		if err2 != nil {
-			log.Output(1, err2.Error())
-			worker.conn.Close()
-			return
+		err = reader.Decode(&response)
+		if err != nil {
+			return err
 		}
 
-		switch response.Type {
-		case "found":
-			worker.Out <- response.Result
-			
-		case "notfound":
-			worker.Done <- true
-		}
+		worker.Out <- response
 	}
 }
 
 // Stop stops worker running tasks.
-func (worker *Worker) Stop() {
+func (worker *Worker) Stop() error {
 	data := lib.DataTransfer {
 		Type: "stop" }
 
-	worker.StopSignal <- true
-
 	err := json.NewEncoder(worker.conn).Encode(data)
 	if err != nil {
-		log.Output(1, err.Error())
-		worker.conn.Close()
+		return err
 	}
+
+	return nil
+}
+
+// Destroy closes connection to worker and kills all channels.
+func (worker *Worker) Destroy() {
+	worker.conn.Close()
+	close(worker.In)
+	close(worker.Out)
+	worker.IsStopped <- true
 }

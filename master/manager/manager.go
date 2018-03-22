@@ -16,7 +16,6 @@ type Manager struct {
 
 	In chan string
 	Out chan string
-	Done chan bool
 }
 
 // New initializes and returns a new Manager.
@@ -26,8 +25,7 @@ func New(ln net.Listener) Manager {
 		workers: make(map[int]worker.Worker),
 		
 		In: make(chan string),
-		Out: make(chan string),
-		Done: make(chan bool) }
+		Out: make(chan string) }
 }
 
 // Run runs manager tasks.
@@ -53,57 +51,87 @@ func (manager *Manager) Run() {
 func (manager *Manager) Deliver() {
 	for {
 		request := <- manager.In
-		nWorkers := len(manager.workers)
 
 		start := []rune("a")
 		end := []rune("999")
 		
-		if nWorkers != 0 {
-			ranges := charset.Range(start, end, nWorkers)
-
-			i := 0
-			for _, worker := range manager.workers {
-				worker.In <- lib.DataTransfer {
-					Type: "data",
-					Start: ranges[i][0],
-					End: ranges[i][1],
-					Code: request }
-
-				i++
-
-				go func() {
-					select {
-					case response := <- worker.Out:
-						manager.Out <- response
-						manager.Stop()
-					case <- worker.StopSignal:
-					}
-				}()
-			}
-		} else {
+		if len(manager.workers) == 0 {
 			manager.Out <- "No workers found!"
+			continue
+		}
+
+		ranges := charset.Range(start, end, len(manager.workers))
+
+		i := 0
+		for _, w := range manager.workers {
+			w.In <- lib.DataTransfer {
+				Type: "data",
+				Start: ranges[i][0],
+				End: ranges[i][1],
+				Code: request }
+
+			i++
+			go func(w worker.Worker) {
+				select {
+				case <- w.IsStopped:
+					return
+
+				case response := <- w.Out:
+					switch response.Type {
+					case "found":
+						manager.BroadcastStop()
+						manager.Out <- response.Result
+						
+					case "notfound":
+						if manager.Done() {
+							manager.Out <- "Not found!"
+						}
+					}
+				}
+			}(w)
 		}
 	}
 }
 
+// Done checks whether all workers have finished.
+func (manager *Manager) Done() bool {
+	for _, w := range manager.workers {
+		if !w.Done {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Add adds new worker connection to manager.
 func (manager *Manager) Add(conn net.Conn) {
-	id := len(manager.workers)
+	workers := manager.workers
+	id := len(workers)
 
 	worker := worker.New(conn)
 	manager.workers[id] = worker
 
-	fmt.Println("Conns: ", len(manager.workers))
+	fmt.Println("Conns: ", len(workers))
 
 	go func() {
-		worker.Run()
-		delete(manager.workers, id)
+		err := worker.Run()
+		if err != nil {
+			log.Output(2, err.Error())
+
+			worker.Destroy()
+			delete(workers, id)
+
+			fmt.Println("Conns: ", len(workers))
+		}
 	}()
 }
 
-// Stop sends stop signal to all workers.
-func (manager *Manager) Stop() {
+// BroadcastStop sends stop signal to all working workers.
+func (manager *Manager) BroadcastStop() {
 	for _, worker := range manager.workers {
-		worker.Stop()
+		if !worker.Done {
+			worker.Stop()
+		}
 	}
 }
