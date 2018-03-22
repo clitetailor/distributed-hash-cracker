@@ -3,60 +3,50 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"flag"
 	"net"
-	"strings"
+	"log"
 )
 
 func main() {
 	host := flag.String("host", "", "node host")
 	port := flag.Int("port", 8080, "node port")
+	code := flag.String("code", "", "md5sum")
 	flag.Parse()
 
-	address := getAddress(*host, *port)
-	fmt.Print(address)
-	conn, err := net.Dial("tcp", ":8080")
+	address := GetAddress(*host, *port)
+	conn, err := net.Dial("tcp", address)
 
 	if err != nil {
-		fmt.Print(err.Error())
-	} else {
-		handleConnection(conn)
+		HandleError(err)
+		return
 	}
+	SendMessage(conn, *code)
 }
 
-func getAddress(host string, port int) (string) {
-	return fmt.Sprintf("%s:%d\n", host, port)
+// GetAddress returns address base on host and port.
+func GetAddress(host string, port int) (string) {
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
-func handleConnection(conn net.Conn) {
-	prompt := bufio.NewReader(os.Stdin)
+// SendMessage sends message to connection.
+func SendMessage(conn net.Conn, code string) {
+	_, err := fmt.Fprintf(conn, code + "\n")
+
+	if err != nil {
+		HandleError(err)
+	}
+
 	reader := bufio.NewReader(conn)
-
-	for {
-		fmt.Print("> ")
-		hash, err := prompt.ReadString('\n')
-
-		if strings.HasPrefix(hash, "exit") {
-			conn.Close()
-			return
-		}
-
-		if err != nil {
-			fmt.Println(err.Error())
-			conn.Close()
-			return
-		}
-
-		fmt.Fprintf(conn, hash)
-
-		response, err2 := reader.ReadString('\n')
-		if err2 != nil {
-			fmt.Println(err2.Error())
-			conn.Close()
-			return
-		}
-
-		fmt.Println(response)
+	response, err2 := reader.ReadString('\n')
+	if err2 != nil {
+		HandleError(err2)
 	}
+
+	fmt.Println(response)
+}
+
+// HandleError logs the error and exits.
+func HandleError(err error) {
+	log.Fatal(err)
 }
