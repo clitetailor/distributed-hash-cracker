@@ -6,6 +6,7 @@ import (
 	"flag"
 	"net"
 	"log"
+	"strings"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 	conn, err := net.Dial("tcp", address)
 
 	if err != nil {
-		HandleError(err)
+		log.Fatal(err)
 		return
 	}
 	SendMessage(conn, *code)
@@ -34,19 +35,14 @@ func SendMessage(conn net.Conn, code string) {
 	_, err := fmt.Fprintf(conn, code + "\n")
 
 	if err != nil {
-		HandleError(err)
+		log.Fatal(err)
 	}
 
 	reader := bufio.NewReader(conn)
 	response, err2 := reader.ReadString('\n')
 	if err2 != nil {
-		HandleError(err2)
+		log.Fatal(err2)
 	}
 
-	fmt.Println(response)
-}
-
-// HandleError logs the error and exits.
-func HandleError(err error) {
-	log.Fatal(err)
+	fmt.Println(strings.Trim(response, "\n\r"))
 }

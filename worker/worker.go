@@ -58,10 +58,14 @@ func (worker *Worker) Init() {
 
 // Run runs worker task.
 func (worker *Worker) Run(data lib.DataTransfer) {
+	fmt.Println(data)
+	
 	switch data.Type {
 	case "data":
 		worker.stop = false		
-		worker.StartGoroutines(data)
+		go func() {
+			worker.StartGoroutines(data)
+		}()
 
 	case "stop":
 		worker.Stop()
@@ -100,11 +104,15 @@ func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 		writer := json.NewEncoder(worker.conn)
 		err := writer.Encode(&response)
 		if err != nil {
+			close(notfound)
+
 			log.Output(1, err.Error())
 			worker.conn.Close()
 			return
 		}
 	}
+
+	close(notfound)
 }
 
 // RunHash runs hash task.
@@ -140,4 +148,6 @@ func (worker *Worker) RunHash(data lib.DataTransfer, notfound chan bool) {
 // Stop signals workers to stop other tasks.
 func (worker *Worker) Stop() {
 	worker.stop = true
+
+	fmt.Println("Stopped!")
 }

@@ -13,18 +13,14 @@ func main() {
 	ln2, err2 := net.Listen("tcp", ":25000")
 
 	if err != nil {
-		log.Output(1, err.Error())
-		return
+		log.Fatal(err)
 	}
-	fmt.Println("Listening  on port 8080")
 	
 	if err2 != nil {
-		log.Output(1, err2.Error())
-		return
+		log.Fatal(err)
 	}
-	fmt.Println("Listening on ports 25000")
 
-	m := manager.New(ln2)
+	m := manager.NewManager(ln2)
 
 	go func() {
 		m.Run()
@@ -34,37 +30,38 @@ func main() {
 		conn, err := ln.Accept()
 		
 		if err != nil {
-			log.Output(1, err.Error())
+			log.Println(err)
 			conn.Close()
 			continue
 		}
 		
-		go handleConnection(conn, m.In, m.Out)
+		go HandleConnection(conn, m.In, m.Out)
 	}
 }
 
-func handleConnection(conn net.Conn, in chan string, out chan string) {
+// HandleConnection handles connection input and output.
+func HandleConnection(conn net.Conn, in chan string, out chan string) {
+	reader := bufio.NewReader(conn)
+
 	for {
-		reader := bufio.NewReader(conn)
+		request, err := reader.ReadString('\n')
 
-		for {
-			request, err := reader.ReadString('\n')
-			if err != nil {
-				log.Output(1, err.Error())
-				conn.Close()
-				return
-			}
+		if err != nil {
+			log.Println(err)
+			conn.Close()
+			return
+		}
 
+		go func() {
 			in <- request
 			response := <- out
-
-			fmt.Println(response)
+			
 			_, err2 := fmt.Fprintf(conn, response + "\n")
 			if err2 != nil {
-				log.Output(1, err.Error())
+				log.Println(err2)
 				conn.Close()
 				return
 			}
-		}
+		}()
 	}
 }

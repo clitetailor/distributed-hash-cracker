@@ -2,6 +2,7 @@ package worker
 
 import (
 	"net"
+	"log"
 	"encoding/json"
 	"github.com/clitetailor/distributed-hash-decrypter/lib"
 )
@@ -27,29 +28,32 @@ func New(conn net.Conn) Worker {
 
 // Run runs and manager the connection to worker.
 func (worker *Worker) Run() error {
+	writer := json.NewEncoder(worker.conn)
+	reader := json.NewDecoder(worker.conn)
+
+	go func() {
+		for {
+			var response lib.DataTransfer
+
+			err2 := reader.Decode(&response)
+			if err2 != nil {
+				log.Println(err2)
+			}
+
+			worker.Out <- response
+		}
+	}()
+
 	for {
-		writer := json.NewEncoder(worker.conn)
-	
 		err := writer.Encode(<- worker.In)
 		if err != nil {
 			return err
 		}
-		
-		reader := json.NewDecoder(worker.conn)
-		
-		var response lib.DataTransfer
-
-		err = reader.Decode(&response)
-		if err != nil {
-			return err
-		}
-
-		worker.Out <- response
 	}
 }
 
-// Stop stops worker running tasks.
-func (worker *Worker) Stop() error {
+// SendStop stops worker running tasks.
+func (worker *Worker) SendStop() error {
 	data := lib.DataTransfer {
 		Type: "stop" }
 
