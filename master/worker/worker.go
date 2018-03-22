@@ -38,6 +38,7 @@ func (worker *Worker) Run() error {
 			err2 := reader.Decode(&response)
 			if err2 != nil {
 				log.Println(err2)
+				return
 			}
 
 			worker.Out <- response

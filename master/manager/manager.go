@@ -64,26 +64,6 @@ func (manager *Manager) Deliver() {
 				End: ranges[i][1],
 				Code: request }
 
-			go func(w *worker.Worker) {
-				select {
-				case <- w.IsStopped:
-					
-				case response := <- w.Out:
-					w.Done = true
-					
-					switch response.Type {
-					case "found":
-						manager.BroadcastStop()
-						manager.Out <- response.Result
-						
-					case "notfound":
-						if manager.Done() {
-							manager.Out <- "Not found!"
-						}
-					}
-				}
-			}(w)
-
 			i++
 		}
 	}
@@ -108,7 +88,7 @@ func (manager *Manager) Add(conn net.Conn) {
 	w := worker.New(conn)
 	workers[id] = &w
 
-	log.Println("Conns: ", len(workers))
+	log.Println("Conns:", len(workers))
 
 	go func() {
 		err := w.Run()
@@ -119,7 +99,30 @@ func (manager *Manager) Add(conn net.Conn) {
 			w.Destroy()
 			delete(workers, id)
 
-			log.Println("Conns: ", len(workers))
+			log.Println("Conns:", len(workers))
+		}
+	}()
+
+
+	go func() {
+		for {
+			select {
+			case <- w.IsStopped:
+				
+			case response := <- w.Out:
+				w.Done = true
+				
+				switch response.Type {
+				case "found":
+					manager.BroadcastStop()
+					manager.Out <- response.Result
+					
+				case "notfound":
+					if manager.Done() {
+						manager.Out <- "Not found!"
+					}
+				}
+			}
 		}
 	}()
 }

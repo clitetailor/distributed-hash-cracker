@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"encoding/json"
 	"log"
@@ -15,7 +14,7 @@ func main() {
 	conn, err := net.Dial("tcp", ":25000")
 
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Println(err.Error())
 		conn.Close()
 		return
 	}
@@ -58,7 +57,7 @@ func (worker *Worker) Init() {
 
 // Run runs worker task.
 func (worker *Worker) Run(data lib.DataTransfer) {
-	fmt.Println(data)
+	log.Println("Recv:", data.Type, data.Start, data.End, strings.Trim(data.Code, "\n\r"))
 	
 	switch data.Type {
 	case "data":
@@ -96,7 +95,7 @@ func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 	wg.Wait()
 
 	if len(notfound) == worker.nRoutines {
-		fmt.Println("Not found!")
+		log.Println("Not found!")
 	
 		response := lib.DataTransfer {
 			Type: "notfound" }
@@ -129,7 +128,7 @@ func (worker *Worker) RunHash(data lib.DataTransfer, notfound chan bool) {
 			code := charset.HashString(str)
 
 			if strings.HasPrefix(data.Code, code) {
-				fmt.Println("Found: ", str)
+				log.Println("Found:", strings.Trim(str, "\n\r"))
 
 				data := lib.DataTransfer {
 					Type: "found",
@@ -149,5 +148,5 @@ func (worker *Worker) RunHash(data lib.DataTransfer, notfound chan bool) {
 func (worker *Worker) Stop() {
 	worker.stop = true
 
-	fmt.Println("Stopped!")
+	log.Println("Stopped!")
 }
