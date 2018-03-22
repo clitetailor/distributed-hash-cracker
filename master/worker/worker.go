@@ -22,6 +22,7 @@ func New(conn net.Conn) Worker {
 		conn: conn,
 		In: make(chan lib.DataTransfer),
 		Out: make(chan string),
+		Done: make(chan bool),
 		StopSignal: make(chan bool) }
 }
 

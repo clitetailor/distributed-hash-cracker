@@ -4,10 +4,19 @@ import "testing"
 
 func TestInc(t *testing.T) {
 	arr := []rune("hello world")
-	IncRuneArr(arr)
+	arr = IncRuneArr(arr)
 
 	if string(arr) != "iello world" {
 		t.Error("Expected 'hello world' got", string(arr))
+	}
+}
+
+func TestBoundary(t *testing.T) {
+	arr := []rune("99")
+	arr = IncRuneArr(arr)
+
+	if string(arr) != string([]rune{ rune(0), rune(0), 'a' }) {
+		t.Error("Expected '00a' got", string(arr))
 	}
 }
 

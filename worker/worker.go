@@ -5,6 +5,8 @@ import (
 	"net"
 	"encoding/json"
 	"log"
+	"sync"
+	"strings"
 	"github.com/clitetailor/distributed-hash-decrypter/lib"
 	"github.com/clitetailor/distributed-hash-decrypter/lib/charset"
 )
@@ -68,16 +70,44 @@ func (worker *Worker) Run(data lib.DataTransfer) {
 
 // StartGoroutines starts worker goroutines.
 func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
+	ranges := charset.Range(data.Start, data.End, worker.nRoutines)
+
+	var wg sync.WaitGroup
+
 	for i := 0; i < worker.nRoutines; i++ {
-		go worker.RunHash(data)
+		wg.Add(1)
+
+		go func(i int) {
+			defer wg.Done()
+
+			worker.RunHash(lib.DataTransfer {
+				Start: ranges[i][0],
+				End: ranges[i][1],
+				
+				Code: data.Code }, i)
+		}(i)
+	}
+
+	wg.Wait()
+	fmt.Println("Not found!")
+
+	response := lib.DataTransfer {
+		Type: "notfound" }
+	
+	writer := json.NewEncoder(worker.conn)
+	err := writer.Encode(&response)
+	if err != nil {
+		log.Output(1, err.Error())
+		worker.conn.Close()
+		return
 	}
 }
 
 // RunHash runs hash task.
-func (worker *Worker) RunHash(data lib.DataTransfer) {
+func (worker *Worker) RunHash(data lib.DataTransfer, routineI int) {
 	writer := json.NewEncoder(worker.conn)
 
-	for i := data.Start; charset.Sign(i, data.End) < 0; charset.IncRuneArr(i) {
+	for i := data.Start; charset.Sign(i, data.End) < 0; i = charset.IncRuneArr(i) {
 		if worker.stop {
 			return
 		}
@@ -86,7 +116,7 @@ func (worker *Worker) RunHash(data lib.DataTransfer) {
 			str := string(i)
 			code := charset.HashString(str)
 
-			if code == data.Code {
+			if strings.HasPrefix(data.Code, code) {
 				data := lib.DataTransfer {
 					Type: "found",
 					Result: str }
@@ -97,12 +127,6 @@ func (worker *Worker) RunHash(data lib.DataTransfer) {
 			}
 		}
 	}
-
-	response := lib.DataTransfer {
-		Type: "notfound" }
-
-	writer.Encode(response)
-	worker.Stop()
 }
 
 // Stop signals workers to stop other tasks.

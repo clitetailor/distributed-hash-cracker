@@ -16,44 +16,52 @@ var CharsetSize int
 
 func init() {
 	Charset = append(Charset, rune(0))
-
-	for char := 'a'; char < 'z'; char++ {
+	
+	for char := 'a'; char <= 'z'; char++ {
 		Charset = append(Charset, char)
 	}
-
+	
 	Charset = append(Charset, ' ')
-
-	for char := '0'; char < '9'; char++ {
+	
+	for char := '0'; char <= '9'; char++ {
 		Charset = append(Charset, char)
 	}
-
+	
 	CharsetMap = make(map[rune]int)
 	for i, char := range Charset {
 		CharsetMap[char] = i
 	}
-
+	
 	CharsetSize = len(Charset)
 }
 
 // IncRuneArr increments rune arr.
-func IncRuneArr(arr []rune) {
+func IncRuneArr(arr []rune) []rune {
+	newArr := make([]rune, len(arr))
+	copy(newArr, arr)
 	inc := 1
 
 	for i, char := range arr {
-		arr[i] = Charset[(CharsetMap[char] + inc) % CharsetSize]
+		newArr[i] = Charset[(CharsetMap[char] + inc) % CharsetSize]
 		inc = (CharsetMap[char] + inc) / CharsetSize
 
 		if inc == 0 {
 			break
 		}
 	}
+
+	if inc != 0 {
+		newArr = append(newArr, Charset[rune(inc)])
+	}
+
+	return newArr
 }
 
 // IsValid checks whether an array is valid.
 func IsValid(arr []rune) bool {
 	length := len(arr)
 
-	for i := 1; i < length; i++ {
+	for i := 0; i < length; i++ {
 		if arr[i] == rune(0) {
 			return false
 		}
@@ -72,7 +80,7 @@ func Sign(a []rune, b []rune) int {
 		return -1
 	}
 
-	for i := len(a); i > -1; i-- {
+	for i := len(a) - 1; i > -1; i-- {
 		if (a[i] > b[i]) {
 			return 1
 		}
@@ -92,11 +100,12 @@ func HashString(str string) string {
 
 // RuneArrToBigInt converts rune array to big.Int and returns.
 func RuneArrToBigInt(runeArr []rune) (*big.Int) {
+
 	accum := big.NewInt(0)
 	charsetSize := big.NewInt(int64(CharsetSize))
 
 	runeArr = Reverse(runeArr)
-
+	
 	for _, ch := range runeArr {
 		accum.Mul(accum, charsetSize)
 		accum.Add(accum, RuneToBigInt(ch))
@@ -177,5 +186,6 @@ func Range(start []rune, end []rune, count int) [][2][]rune {
 	ranges = append(ranges, [2][]rune{
 		BigIntToRuneArr(startInt),
 		BigIntToRuneArr(endInt)	})
+
 	return ranges
 }
