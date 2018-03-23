@@ -2,10 +2,10 @@ package main
 
 import (
 	"net"
-	"encoding/json"
 	"log"
 	"sync"
 	"strings"
+	"encoding/json"
 	"github.com/clitetailor/distributed-hash-decrypter/lib"
 	"github.com/clitetailor/distributed-hash-decrypter/lib/charset"
 )
@@ -57,7 +57,7 @@ func (worker *Worker) Init() {
 
 // Run runs worker task.
 func (worker *Worker) Run(data lib.DataTransfer) {
-	log.Println("Recv:", data.Type, data.Start, data.End, strings.Trim(data.Code, "\n\r"))
+	log.Println("Recv:", data.Type, strings.Trim(data.Code, "\n\r"), data.Start, data.End)
 	
 	switch data.Type {
 	case "data":
