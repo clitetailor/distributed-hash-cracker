@@ -1,8 +1,11 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"net"
 	"log"
+	"time"
 	"sync"
 	"strings"
 	"encoding/json"
@@ -11,7 +14,15 @@ import (
 )
 
 func main() {
-	conn, err := net.Dial("tcp", ":25000")
+	host := flag.String("host", "", "node host")
+	port := flag.Int("port", 25000, "node port")
+	flag.Parse()
+
+	time.Sleep(20 * time.Second)
+
+	address := GetAddress(*host, *port)
+
+	conn, err := net.Dial("tcp", address)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -21,6 +32,11 @@ func main() {
 
 	worker := New(conn)
 	worker.Init()
+}
+
+// GetAddress returns address base on host and port.
+func GetAddress(host string, port int) (string) {
+	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // Worker stores informations about worker.

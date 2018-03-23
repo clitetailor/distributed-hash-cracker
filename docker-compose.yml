@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  master:
+    build:
+      context: .
+      dockerfile: ./master/Dockerfile
+    ports:
+    - "8080:8080"
+    expose:
+    - "25000"
+    networks:
+      topo:
+        aliases:
+        - master
+
+  worker:
+    build:
+      context: .
+      dockerfile: ./worker/Dockerfile
+    expose:
+    - "25000"
+    networks:
+    - topo
+
+networks:
+  topo:
