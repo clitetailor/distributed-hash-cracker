@@ -8,10 +8,12 @@ import (
 	"log"
 )
 
+var nodeID = 0
+
 // Manager manages worker clusters.
 type Manager struct {
 	ln net.Listener
-	workers map[int]*worker.Worker
+	workers map[*worker.Worker]*worker.Worker
 	In chan string
 	Out chan string
 }
@@ -20,7 +22,7 @@ type Manager struct {
 func NewManager(ln net.Listener) *Manager {
 	return &Manager {
 		ln: ln,
-		workers: make(map[int]*worker.Worker),
+		workers: make(map[*worker.Worker]*worker.Worker),
 		In: make(chan string),
 		Out: make(chan string) }
 }
@@ -83,32 +85,35 @@ func (manager *Manager) Done() bool {
 // Add adds new worker connection to manager.
 func (manager *Manager) Add(conn net.Conn) {
 	workers := manager.workers
-	id := len(workers)
 
-	w := worker.New(conn)
-	workers[id] = &w
+	w := worker.NewWorker(conn)
+	workers[w] = w
 
-	log.Println("Conns:", len(workers))
-
+	kill := make(chan bool)
 	go func() {
+		nodeID++
+		log.Println("Add Node:", nodeID)
+		log.Println("Conns:", len(workers))
+
 		err := w.Run()
 
+		log.Println("Remove Node:", nodeID)
+		
 		if err != nil {
 			log.Println(err)
-
+			
 			w.Destroy()
-			delete(workers, id)
-
-			log.Println("Conns:", len(workers))
+			delete(workers, w)
 		}
+
+		kill <- true
+		log.Println("Conns:", len(workers))
 	}()
 
 
 	go func() {
 		for {
 			select {
-			case <- w.IsStopped:
-				
 			case response := <- w.Out:
 				w.Done = true
 				
@@ -122,6 +127,9 @@ func (manager *Manager) Add(conn net.Conn) {
 						manager.Out <- "Not found!"
 					}
 				}
+
+			case <- kill:
+				return 
 			}
 		}
 	}()

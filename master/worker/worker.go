@@ -13,17 +13,15 @@ type Worker struct {
 	Done bool
 	In chan lib.DataTransfer
 	Out chan lib.DataTransfer
-	IsStopped chan bool
 }
 
-// New initializes and returns a new Worker.
-func New(conn net.Conn) Worker {
-	return Worker {
+// NewWorker initializes and returns a new Worker.
+func NewWorker(conn net.Conn) *Worker {
+	return &Worker {
 		conn: conn,
 		Done: false,
 		In: make(chan lib.DataTransfer),
-		Out: make(chan lib.DataTransfer),
-		IsStopped: make(chan bool) }
+		Out: make(chan lib.DataTransfer) }
 }
 
 // Run runs and manager the connection to worker.
@@ -31,13 +29,16 @@ func (worker *Worker) Run() error {
 	writer := json.NewEncoder(worker.conn)
 	reader := json.NewDecoder(worker.conn)
 
+	kill := make(chan error)
+
 	go func() {
 		for {
 			var response lib.DataTransfer
 
-			err2 := reader.Decode(&response)
-			if err2 != nil {
-				log.Println(err2)
+			err := reader.Decode(&response)
+			if err != nil {
+				log.Println(err)
+				kill <- err
 				return
 			}
 
@@ -46,9 +47,15 @@ func (worker *Worker) Run() error {
 	}()
 
 	for {
-		err := writer.Encode(<- worker.In)
-		if err != nil {
-			return err
+		select {
+		case response := <- worker.In:
+			err := writer.Encode(response)
+			if err != nil {
+				return err
+			}
+
+		case err := <- kill:
+			return err 
 		}
 	}
 }
@@ -71,5 +78,4 @@ func (worker *Worker) Destroy() {
 	worker.conn.Close()
 	close(worker.In)
 	close(worker.Out)
-	worker.IsStopped <- true
 }
