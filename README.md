@@ -21,20 +21,20 @@ How To Run
 
 Run server:
 
-```bash
+```console
 $ sh ./master/master
 ```
 
 Run worker:
 
-```bash
+```console
 $ sh ./worker/worker
 ```
 
 Decrypt MD5:
 
-```bash
-$ sh ./client/client --code 900150983cd24fb0d6963f7d28e17f72
+```console
+$ time sh ./client/client --code 900150983cd24fb0d6963f7d28e17f72
 abc
 
 real    0m0.077s
