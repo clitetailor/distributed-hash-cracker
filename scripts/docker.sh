@@ -1,1 +1,1 @@
-docker-compose up --build --scale worker=2
+docker-compose up -d --build --scale worker=2
