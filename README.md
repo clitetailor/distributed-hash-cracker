@@ -1,5 +1,5 @@
-Distributed Hash Decrypter
-==========================
+Distributed Hash Craker
+=======================
 
 How To Build
 ------------
