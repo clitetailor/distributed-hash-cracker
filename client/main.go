@@ -2,10 +2,10 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"flag"
-	"net"
+	"fmt"
 	"log"
+	"net"
 	"strings"
 )
 
@@ -26,13 +26,13 @@ func main() {
 }
 
 // GetAddress returns address base on host and port.
-func GetAddress(host string, port int) (string) {
+func GetAddress(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // SendMessage sends message to connection.
 func SendMessage(conn net.Conn, code string) {
-	_, err := fmt.Fprintf(conn, code + "\n")
+	_, err := fmt.Fprintf(conn, code+"\n")
 
 	if err != nil {
 		log.Fatal(err)

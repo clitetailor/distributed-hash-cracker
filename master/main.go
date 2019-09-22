@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/clitetailor/distributed-hash-decrypter/master/manager"
-	"fmt"
-	"net"
 	"bufio"
+	"fmt"
+	"github.com/clitetailor/gohashgodistributed/master/manager"
 	"log"
+	"net"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	if err2 != nil {
 		log.Fatal(err)
 	}
@@ -25,16 +25,16 @@ func main() {
 	go func() {
 		m.Run()
 	}()
-	
+
 	for {
 		conn, err := ln.Accept()
-		
+
 		if err != nil {
 			log.Println(err)
 			conn.Close()
 			continue
 		}
-		
+
 		go HandleConnection(conn, m.In, m.Out)
 	}
 }
@@ -54,9 +54,9 @@ func HandleConnection(conn net.Conn, in chan string, out chan string) {
 
 		go func() {
 			in <- request
-			response := <- out
-			
-			_, err2 := fmt.Fprintf(conn, response + "\n")
+			response := <-out
+
+			_, err2 := fmt.Fprintf(conn, response+"\n")
 			if err2 != nil {
 				log.Println(err2)
 				conn.Close()

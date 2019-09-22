@@ -15,7 +15,7 @@ func TestBoundary(t *testing.T) {
 	arr := []rune("99")
 	arr = IncRuneArr(arr)
 
-	if string(arr) != string([]rune{ rune(0), rune(0), 'a' }) {
+	if string(arr) != string([]rune{rune(0), rune(0), 'a'}) {
 		t.Error("Expected '00a' got", string(arr))
 	}
 }

@@ -1,36 +1,36 @@
 package manager
 
 import (
-	"github.com/clitetailor/distributed-hash-decrypter/master/worker"
-	"github.com/clitetailor/distributed-hash-decrypter/lib/charset"
-	"github.com/clitetailor/distributed-hash-decrypter/lib"
-	"net"
+	"github.com/clitetailor/gohashgodistributed/lib"
+	"github.com/clitetailor/gohashgodistributed/lib/charset"
+	"github.com/clitetailor/gohashgodistributed/master/worker"
 	"log"
+	"net"
 )
 
 var nodeID = 0
 
 // Manager manages worker clusters.
 type Manager struct {
-	ln net.Listener
+	ln      net.Listener
 	workers map[*worker.Worker]*worker.Worker
-	In chan string
-	Out chan string
+	In      chan string
+	Out     chan string
 }
 
 // NewManager initializes and returns new Manager.
 func NewManager(ln net.Listener) *Manager {
-	return &Manager {
-		ln: ln,
+	return &Manager{
+		ln:      ln,
 		workers: make(map[*worker.Worker]*worker.Worker),
-		In: make(chan string),
-		Out: make(chan string) }
+		In:      make(chan string),
+		Out:     make(chan string)}
 }
 
 // Run runs manager tasks.
 func (manager *Manager) Run() {
 	go manager.Deliver()
-	
+
 	for {
 		conn, err := manager.ln.Accept()
 		if err != nil {
@@ -46,7 +46,7 @@ func (manager *Manager) Run() {
 // Deliver receives data from client and delivers to workers.
 func (manager *Manager) Deliver() {
 	for {
-		request := <- manager.In
+		request := <-manager.In
 
 		start := []rune("a")
 		end := []rune("999999")
@@ -57,14 +57,14 @@ func (manager *Manager) Deliver() {
 		}
 
 		ranges := charset.Range(start, end, len(manager.workers))
-		
+
 		i := 0
 		for _, w := range manager.workers {
-			w.In <- lib.DataTransfer {
-				Type: "data",
+			w.In <- lib.DataTransfer{
+				Type:  "data",
 				Start: ranges[i][0],
-				End: ranges[i][1],
-				Code: request }
+				End:   ranges[i][1],
+				Code:  request}
 
 			i++
 		}
@@ -98,10 +98,10 @@ func (manager *Manager) Add(conn net.Conn) {
 		err := w.Run()
 
 		log.Println("Remove Node:", nodeID)
-		
+
 		if err != nil {
 			log.Println(err)
-			
+
 			w.Destroy()
 			delete(workers, w)
 		}
@@ -110,26 +110,25 @@ func (manager *Manager) Add(conn net.Conn) {
 		log.Println("Conns:", len(workers))
 	}()
 
-
 	go func() {
 		for {
 			select {
-			case response := <- w.Out:
+			case response := <-w.Out:
 				w.Done = true
-				
+
 				switch response.Type {
 				case "found":
 					manager.BroadcastStop()
 					manager.Out <- response.Result
-					
+
 				case "notfound":
 					if manager.Done() {
 						manager.Out <- "Not found!"
 					}
 				}
 
-			case <- kill:
-				return 
+			case <-kill:
+				return
 			}
 		}
 	}()

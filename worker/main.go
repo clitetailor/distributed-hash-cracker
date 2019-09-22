@@ -1,16 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
-	"net"
+	"github.com/clitetailor/gohashgodistributed/lib"
+	"github.com/clitetailor/gohashgodistributed/lib/charset"
 	"log"
-	"time"
-	"sync"
+	"net"
 	"strings"
-	"encoding/json"
-	"github.com/clitetailor/distributed-hash-decrypter/lib"
-	"github.com/clitetailor/distributed-hash-decrypter/lib/charset"
+	"sync"
+	"time"
 )
 
 func main() {
@@ -35,22 +35,22 @@ func main() {
 }
 
 // GetAddress returns address base on host and port.
-func GetAddress(host string, port int) (string) {
+func GetAddress(host string, port int) string {
 	return fmt.Sprintf("%s:%d", host, port)
 }
 
 // Worker stores informations about worker.
 type Worker struct {
-	conn net.Conn
+	conn      net.Conn
 	nRoutines int
-	stop bool
+	stop      bool
 }
 
 // New initializes and returns a new Worker.
 func New(conn net.Conn) Worker {
-	return Worker {
-		conn: conn,
-		nRoutines: 3 }
+	return Worker{
+		conn:      conn,
+		nRoutines: 3}
 }
 
 // Init handles connection IO and run tasks.
@@ -74,10 +74,10 @@ func (worker *Worker) Init() {
 // Run runs worker task.
 func (worker *Worker) Run(data lib.DataTransfer) {
 	log.Println("Recv:", data.Type, strings.Trim(data.Code, "\n\r"), data.Start, data.End)
-	
+
 	switch data.Type {
 	case "data":
-		worker.stop = false		
+		worker.stop = false
 		go func() {
 			worker.StartGoroutines(data)
 		}()
@@ -100,11 +100,11 @@ func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 		go func(i int) {
 			defer wg.Done()
 
-			worker.RunHash(lib.DataTransfer {
+			worker.RunHash(lib.DataTransfer{
 				Start: ranges[i][0],
-				End: ranges[i][1],
-				
-				Code: data.Code }, notfound)
+				End:   ranges[i][1],
+
+				Code: data.Code}, notfound)
 		}(i)
 	}
 
@@ -112,10 +112,10 @@ func (worker *Worker) StartGoroutines(data lib.DataTransfer) {
 
 	if len(notfound) == worker.nRoutines {
 		log.Println("Not found!")
-	
-		response := lib.DataTransfer {
-			Type: "notfound" }
-		
+
+		response := lib.DataTransfer{
+			Type: "notfound"}
+
 		writer := json.NewEncoder(worker.conn)
 		err := writer.Encode(&response)
 		if err != nil {
@@ -146,9 +146,9 @@ func (worker *Worker) RunHash(data lib.DataTransfer, notfound chan bool) {
 			if strings.HasPrefix(data.Code, code) {
 				log.Println("Found:", strings.Trim(str, "\n\r"))
 
-				data := lib.DataTransfer {
-					Type: "found",
-					Result: str }
+				data := lib.DataTransfer{
+					Type:   "found",
+					Result: str}
 
 				writer.Encode(data)
 				worker.stop = true

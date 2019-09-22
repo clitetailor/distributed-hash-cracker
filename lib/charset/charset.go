@@ -8,30 +8,31 @@ import (
 
 // Charset defines a set of common characters to be used.
 var Charset = []rune{}
+
 // CharsetMap maps between character and its index position in Charset.
 var CharsetMap map[rune]int
+
 // CharsetSize is the size of Charset.
 var CharsetSize int
 
-
 func init() {
 	Charset = append(Charset, rune(0))
-	
+
 	for char := 'a'; char <= 'z'; char++ {
 		Charset = append(Charset, char)
 	}
-	
+
 	Charset = append(Charset, ' ')
-	
+
 	for char := '0'; char <= '9'; char++ {
 		Charset = append(Charset, char)
 	}
-	
+
 	CharsetMap = make(map[rune]int)
 	for i, char := range Charset {
 		CharsetMap[char] = i
 	}
-	
+
 	CharsetSize = len(Charset)
 }
 
@@ -42,7 +43,7 @@ func IncRuneArr(arr []rune) []rune {
 	inc := 1
 
 	for i, char := range arr {
-		newArr[i] = Charset[(CharsetMap[char] + inc) % CharsetSize]
+		newArr[i] = Charset[(CharsetMap[char]+inc)%CharsetSize]
 		inc = (CharsetMap[char] + inc) / CharsetSize
 
 		if inc == 0 {
@@ -72,19 +73,19 @@ func IsValid(arr []rune) bool {
 
 // Sign helps compare two rune array.
 func Sign(a []rune, b []rune) int {
-	if (len(a) > len(b)) {
+	if len(a) > len(b) {
 		return 1
 	}
 
-	if (len(a) < len(b)) {
+	if len(a) < len(b) {
 		return -1
 	}
 
 	for i := len(a) - 1; i > -1; i-- {
-		if (a[i] > b[i]) {
+		if a[i] > b[i] {
 			return 1
 		}
-		if (a[i] < b[i]) {
+		if a[i] < b[i] {
 			return -1
 		}
 	}
@@ -99,13 +100,13 @@ func HashString(str string) string {
 }
 
 // RuneArrToBigInt converts rune array to big.Int and returns.
-func RuneArrToBigInt(runeArr []rune) (*big.Int) {
+func RuneArrToBigInt(runeArr []rune) *big.Int {
 
 	accum := big.NewInt(0)
 	charsetSize := big.NewInt(int64(CharsetSize))
 
 	runeArr = Reverse(runeArr)
-	
+
 	for _, ch := range runeArr {
 		accum.Mul(accum, charsetSize)
 		accum.Add(accum, RuneToBigInt(ch))
@@ -115,7 +116,7 @@ func RuneArrToBigInt(runeArr []rune) (*big.Int) {
 }
 
 // RuneToBigInt converts rune to big.Int.
-func RuneToBigInt(r rune) (*big.Int) {
+func RuneToBigInt(r rune) *big.Int {
 	n := CharsetMap[r]
 	return big.NewInt(int64(n))
 }
@@ -132,7 +133,7 @@ func BigIntToRuneArr(number *big.Int) []rune {
 
 		ch := Charset[int(remainder.Int64())]
 		runeArr = append(runeArr, ch)
-		
+
 		if number.Cmp(charsetSize) < 0 {
 			number.DivMod(number, charsetSize, remainder)
 
@@ -150,13 +151,13 @@ func Reverse(runeArr []rune) []rune {
 	newRuneArr := make([]rune, len(runeArr))
 
 	length := len(runeArr)
-	for i := 0; i < length / 2; i++ {
+	for i := 0; i < length/2; i++ {
 		j := len(runeArr) - i - 1
 		newRuneArr[i], newRuneArr[j] = runeArr[j], runeArr[i]
 	}
 
-	if length % 2 != 0 {
-		newRuneArr[length / 2] = runeArr[length / 2]
+	if length%2 != 0 {
+		newRuneArr[length/2] = runeArr[length/2]
 	}
 
 	return newRuneArr
@@ -178,14 +179,14 @@ func Range(start []rune, end []rune, count int) [][2][]rune {
 
 		ranges = append(ranges, [2][]rune{
 			BigIntToRuneArr(startInt),
-			BigIntToRuneArr(midInt) })
+			BigIntToRuneArr(midInt)})
 
 		startInt = midInt
 	}
 
 	ranges = append(ranges, [2][]rune{
 		BigIntToRuneArr(startInt),
-		BigIntToRuneArr(endInt)	})
+		BigIntToRuneArr(endInt)})
 
 	return ranges
 }
